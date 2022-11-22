@@ -108,7 +108,9 @@ with table_tab:
         opts_builder.configure_column("Typ", "Typ")
         opts_builder.configure_column("Opis", "Opis")
         opts_builder.configure_selection("single", use_checkbox=True)
-        opts_builder.configure_pagination(enabled=True)
+        opts_builder.configure_pagination(enabled=True,
+                                          paginationAutoPageSize=False,
+                                          paginationPageSize=50)
         opts = opts_builder.build()
         table = AgGrid(ANNOTATIONS_DF, opts,
                        columns_auto_size_mode="fit_columns",
@@ -118,7 +120,7 @@ with table_tab:
     with col2:
         with st.empty():
             selected_rows = table["selected_rows"]
-            if len(selected_rows) == 1: 
+            if False and len(selected_rows) == 1: # TODO: currently disabled
                 selected_row = selected_rows[0]
                 with st.form(key='form'):
                     st.title("Edycja")
@@ -134,4 +136,4 @@ with table_tab:
 
                     st.form_submit_button(label='Zapisz', on_click=modify_row)
             else:
-                st.title("Wybierz wiersz do edycji")
+                st.title("Wybierz wiersz do edycji - aktualnie nie działa")
