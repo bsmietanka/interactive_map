@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid import AgGrid, GridOptionsBuilder, ColumnsAutoSizeMode
 from PIL import Image
 
 MAP_PATH = "data/small.png"
@@ -42,8 +42,11 @@ for desc in DESCRIPTION:
 DESCRIPTION_DF = pd.DataFrame(split_ids)
 DESCRIPTION_DF.rename(columns={"Nr bieżący": "Numer"}, inplace=True)
 DESCRIPTION_DF.set_index("Numer", inplace=True)
-
 num_cols = ["Szerokość pręty", "Szerokość stopy", "Powierzchnia morgi", "Powierzchnia pręty", "Powierzchnia stopy"]
+DESCRIPTION_DF[num_cols] = DESCRIPTION_DF[num_cols].replace([np.inf, -np.inf], 0)
+DESCRIPTION_DF[num_cols] = DESCRIPTION_DF[num_cols].fillna(0)
+DESCRIPTION_DF[num_cols] = DESCRIPTION_DF[num_cols].astype(int)
+
 ANNOTATIONS_DF = ANNOTATIONS_DF.merge(DESCRIPTION_DF, on="Numer", how="left")
 ANNOTATIONS_DF[num_cols] = ANNOTATIONS_DF[num_cols].replace([np.inf, -np.inf], 0)
 ANNOTATIONS_DF[num_cols] = ANNOTATIONS_DF[num_cols].fillna(0)
@@ -99,41 +102,58 @@ with map_tab:
     st.plotly_chart(create_annotated_image_plot(MAP, ANNOTATIONS_DF), use_container_width=True)
 
 with table_tab:
-    col1, col2 = st.columns(2)
-    with col1:
-        opts_builder = GridOptionsBuilder.from_dataframe(ANNOTATIONS_DF)
-        opts_builder.configure_column("ID", initialHide=True)
-        opts_builder.configure_column("points", initialHide=True)
-        opts_builder.configure_column("Budynek", "Budynek")
-        opts_builder.configure_column("Typ", "Typ")
-        opts_builder.configure_column("Opis", "Opis")
-        opts_builder.configure_selection("single", use_checkbox=True)
-        opts_builder.configure_pagination(enabled=True,
-                                          paginationAutoPageSize=False,
-                                          paginationPageSize=50)
-        opts = opts_builder.build()
-        table = AgGrid(ANNOTATIONS_DF, opts,
-                       columns_auto_size_mode="fit_columns",
-                       fit_columns_on_grid_load=True,
-                       reload_data=True)
+    opts_builder = GridOptionsBuilder.from_dataframe(ANNOTATIONS_DF)
+    opts_builder.configure_column("ID", initialHide=True)
+    opts_builder.configure_column("points", initialHide=True)
+    opts_builder.configure_column("Budynek", "Budynek")
+    opts_builder.configure_column("Typ", "Typ")
+    opts_builder.configure_column("Opis", "Opis")
+    opts_builder.configure_selection("single", use_checkbox=True)
+    opts_builder.configure_pagination(enabled=True,
+                                        paginationAutoPageSize=False,
+                                        paginationPageSize=50)
+    opts_builder.configure_columns()
+    opts = opts_builder.build()
+    table = AgGrid(DESCRIPTION_DF, opts,
+                    columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS
+                    fit_columns_on_grid_load=True,
+                    reload_data=True)
 
-    with col2:
-        with st.empty():
-            selected_rows = table["selected_rows"]
-            if False and len(selected_rows) == 1: # TODO: currently disabled
-                selected_row = selected_rows[0]
-                with st.form(key='form'):
-                    st.title("Edycja")
-                    st.text_input("Budynek:", value=selected_row["Budynek"], key="number")
-                    st.text_input("Typ:", value=selected_row["Typ"], key="type")
-                    st.text_area("Opis:", value=selected_row["Opis"], key="desc",)
+    # col1, col2 = st.columns(2)
+    # with col1:
+    #     opts_builder = GridOptionsBuilder.from_dataframe(ANNOTATIONS_DF)
+    #     opts_builder.configure_column("ID", initialHide=True)
+    #     opts_builder.configure_column("points", initialHide=True)
+    #     opts_builder.configure_column("Budynek", "Budynek")
+    #     opts_builder.configure_column("Typ", "Typ")
+    #     opts_builder.configure_column("Opis", "Opis")
+    #     opts_builder.configure_selection("single", use_checkbox=True)
+    #     opts_builder.configure_pagination(enabled=True,
+    #                                       paginationAutoPageSize=False,
+    #                                       paginationPageSize=50)
+    #     opts = opts_builder.build()
+    #     table = AgGrid(DESCRIPTION_DF, opts,
+    #                    columns_auto_size_mode="fit_columns",
+    #                    fit_columns_on_grid_load=True,
+    #                    reload_data=True)
 
-                    def modify_row():
-                        ANNOTATIONS_DF.loc[ANNOTATIONS_DF["ID"] == selected_row["ID"], "Budynek"] = st.session_state.number
-                        ANNOTATIONS_DF.loc[ANNOTATIONS_DF["ID"] == selected_row["ID"], "Typ"] = st.session_state.type
-                        ANNOTATIONS_DF.loc[ANNOTATIONS_DF["ID"] == selected_row["ID"], "Opis"] = st.session_state.desc
-                        ANNOTATIONS_DF.to_json(ANNOTATIONS_PATH, orient="index")
+    # with col2:
+    #     with st.empty():
+    #         selected_rows = table["selected_rows"]
+    #         if False and len(selected_rows) == 1: # TODO: currently disabled
+    #             selected_row = selected_rows[0]
+    #             with st.form(key='form'):
+    #                 st.title("Edycja")
+    #                 st.text_input("Budynek:", value=selected_row["Budynek"], key="number")
+    #                 st.text_input("Typ:", value=selected_row["Typ"], key="type")
+    #                 st.text_area("Opis:", value=selected_row["Opis"], key="desc",)
 
-                    st.form_submit_button(label='Zapisz', on_click=modify_row)
-            else:
-                st.title("Wybierz wiersz do edycji - aktualnie nie działa")
+    #                 def modify_row():
+    #                     ANNOTATIONS_DF.loc[ANNOTATIONS_DF["ID"] == selected_row["ID"], "Budynek"] = st.session_state.number
+    #                     ANNOTATIONS_DF.loc[ANNOTATIONS_DF["ID"] == selected_row["ID"], "Typ"] = st.session_state.type
+    #                     ANNOTATIONS_DF.loc[ANNOTATIONS_DF["ID"] == selected_row["ID"], "Opis"] = st.session_state.desc
+    #                     ANNOTATIONS_DF.to_json(ANNOTATIONS_PATH, orient="index")
+
+    #                 st.form_submit_button(label='Zapisz', on_click=modify_row)
+    #         else:
+    #             st.title("Wybierz wiersz do edycji - aktualnie nie działa")
